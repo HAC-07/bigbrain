@@ -137,9 +137,32 @@ app.post("/api/v1/content", auth, async (req, res) => {
   }
 });
 
-app.get("/api/v1/content", auth, async (req, res) => {});
+app.get("/api/v1/content", auth, async (req, res) => {
 
-app.delete("/api/v1/content", auth, async (req, res) => {});
+  const userId=req.userId;
+  const content= await Contentmodel.find({
+    userId:userId
+  }).populate("userId","username");
+
+  res.json({
+    content 
+  })
+
+});
+
+app.delete("/api/v1/content", auth, async (req, res) => {
+
+  const userId=req.userId;
+  const contentId=req.body.contentId;
+  const deletedcontent= await Contentmodel.deleteMany({
+   _id:contentId,
+   userId:userId,
+  });
+  res.json({
+    message:"Content Deleted",
+    deletedcontent
+  })
+});
 
 app.post("/api/v1/share", auth, async (req, res) => {});
 
