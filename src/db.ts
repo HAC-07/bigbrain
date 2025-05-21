@@ -1,5 +1,5 @@
 import mongoose, { model, Schema, Types } from "mongoose";
-mongoose.connect("mongodb://localhost:27017/bigbrain")
+mongoose.connect("mongodb://localhost:27017/bigbrain");
 
 const UserSchema = new mongoose.Schema({
   name: { type: String },
@@ -12,8 +12,8 @@ export const Usermodel = model("User", UserSchema);
 const contenttype = ["X", "Youtube"];
 
 const ContentSchema = new mongoose.Schema({
-  type: { type: String, required: true },
-  title: { type: String, enum: contenttype, required: true },
+  type: { type: String, enum: contenttype, required: true },
+  title: { type: String, required: true },
   link: { type: String, required: true },
   userId: { type: Types.ObjectId, ref: "User", required: true },
 });
