@@ -2,9 +2,10 @@ import express from "express";
 import { z } from "zod";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { Contentmodel, Usermodel } from "./db";
+import { Contentmodel, Linkmodel, Usermodel } from "./db";
 import { auth } from "./auth";
 import { Jwt_password } from "./jwt_password";
+import { randomhash } from "./utils";
 const app = express();
 
 app.use(express.json());
@@ -164,8 +165,55 @@ app.delete("/api/v1/content", auth, async (req, res) => {
   })
 });
 
-app.post("/api/v1/share", auth, async (req, res) => {});
+app.post("/api/v1/share", auth, async (req, res) => {
+  const share = req.body.share;
+  if(share){
+    await Linkmodel.create({
+      userId:req.userId,
+      hash:randomhash(10)
+    })
+  }
+  else{
+    await Linkmodel.deleteOne({
+      userId:req.userId
+    })
+  }
+  res.json({
+    message:"Share Link Updated",
+  })
+});
 
-app.get("/api/v1/:sharelink", async (req, res) => {});
+app.get("/api/v1/:sharelink", async (req, res) => {
+
+  const sharelink = req.params.sharelink;
+  const link =await Linkmodel.findOne({
+    sharelink
+  })
+
+  if(!link){
+    res.json({
+      message:"Wrong link provided"
+    })
+    return;
+  }
+  
+    const content = await Contentmodel.find({
+      userId:link.userId
+    })
+
+    const user = await Usermodel.findOne({
+      _id:link.userId
+    })
+    if(!user){
+      res.json({
+        message:"User not found ideally should not happen"
+      })
+      return;
+    }
+    res.json({
+      username:user?.username,
+      content:content
+    })
+});
 
 app.listen(3000);
