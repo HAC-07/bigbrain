@@ -1,6 +1,6 @@
 import express from "express";
 import { z } from "zod";
-import bcrypt from "bcrypt";
+import bcrypt, { hash } from "bcrypt";
 import jwt from "jsonwebtoken";
 import { Contentmodel, Linkmodel, Usermodel } from "./db";
 import { auth } from "./auth";
@@ -9,6 +9,8 @@ import { randomhash } from "./utils";
 const app = express();
 
 app.use(express.json());
+
+const hashed= randomhash(10);
 
 app.post("/api/v1/signup", async (req, res) => {
   const ZodSchema = z.object({
@@ -136,6 +138,11 @@ app.post("/api/v1/content", auth, async (req, res) => {
       });
     }
   }
+  else {
+    res.json({
+      message: "Invalid Inputs",
+    });
+  }
 });
 
 app.get("/api/v1/content", auth, async (req, res) => {
@@ -155,7 +162,16 @@ app.delete("/api/v1/content", auth, async (req, res) => {
 
   const userId=req.userId;
   const contentId=req.body.contentId;
-  const deletedcontent= await Contentmodel.deleteMany({
+
+  if(!contentId){
+    res.json({
+      message:"Content Id is required"
+    })
+    return;
+  }
+
+  try{
+      const deletedcontent= await Contentmodel.deleteMany({
    _id:contentId,
    userId:userId,
   });
@@ -163,14 +179,34 @@ app.delete("/api/v1/content", auth, async (req, res) => {
     message:"Content Deleted",
     deletedcontent
   })
+}
+ catch(e){
+    res.json({
+      message:"Invalid Inputs",
+    })
+  };
 });
 
 app.post("/api/v1/share", auth, async (req, res) => {
   const share = req.body.share;
   if(share){
+
+    const existinglink = await Linkmodel.findOne({
+      userId:req.userId
+    })
+    if (existinglink){
+      res.json({
+        link:`http://localhost:3000/api/v1/${existinglink.hash}`
+      })
+      return;
+    }
+
     await Linkmodel.create({
       userId:req.userId,
-      hash:randomhash(10)
+      hash:hashed
+    })
+    res.json({
+      link: `http://localhost:3000/api/v1/${hashed}`
     })
   }
   else{
@@ -186,8 +222,15 @@ app.post("/api/v1/share", auth, async (req, res) => {
 app.get("/api/v1/:sharelink", async (req, res) => {
 
   const sharelink = req.params.sharelink;
+  if(!sharelink){
+    res.json({
+      message:"Share link is required"
+    })
+    return;
+  }
+  const trimmedvalue = sharelink.split("/").pop();
   const link =await Linkmodel.findOne({
-    sharelink
+    hash:trimmedvalue
   })
 
   if(!link){
@@ -206,11 +249,12 @@ app.get("/api/v1/:sharelink", async (req, res) => {
     })
     if(!user){
       res.json({
-        message:"User not found ideally should not happen"
+        message:"User not found (ideally should not happen)"
       })
       return;
     }
     res.json({
+      name:user?.name,
       username:user?.username,
       content:content
     })
